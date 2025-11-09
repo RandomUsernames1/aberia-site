@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Settling Moving Gallery (Touch-Interactive)</title>
+  <style>
+    :root {
+      --bg: #0a0b12;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(circle at 20% -10%, rgba(124,58,237,.15), transparent 40%),
+                  radial-gradient(circle at 90% 10%, rgba(2,132,199,.15), transparent 40%),
+                  var(--bg);
+      overflow: hidden;
+    }
+
+    /* Full-screen stage with no text */
+    .stage {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: rgba(0,0,0,0);
+    }
+
+    /* Each image block (no captions) */
+    .slide {
+      position: absolute;
+      width: clamp(120px, 18vmin, 240px);
+      height: auto;
+      display: block;
+      border-radius: 12px;
+      overflow: hidden;
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,.5));
+      will-change: left, top;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .slide img {
+      width: 100%;
+      height: auto;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .slide { transition: none; animation: none; }
+    }
+
+    /* Optional: tiny stage glow for depth on very dark backgrounds */
+    .stage::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.04), transparent 40%);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" aria-hidden="true">
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/dQp3qKzS/IMG-0097.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/KvTzjHbv/IMG-0116.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/PJg5KmWG/IMG-0117.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/hPmjv5nc/IMG-0119.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/wTNvMGzd/IMG-0120.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/L5c8vzzj/IMG-0121.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/1XkjvKJ0/3ed1683a-e70f-48d2-b8d0-cba4c4fbced3.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/6qkmMhYf/7812e067-c754-4e81-bc49-267742298854.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/MHCF9Yd7/9e2b0780-5b30-4237-9efc-0b86c044155c.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/XqGPKPcD/bd1d4b1b-0f69-4207-9540-2d7310294329.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/7LBG0tLT/01b6040f-3e4f-4cc1-a7f3-c161e41fd2fb.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/9Mr4pP4f/b68b32d4-8d85-4ec8-9ba5-67d8228d4017.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/3wr0yQ3H/IMG-0005.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/bNbtWRm5/IMG-0099.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/zfdbK2fm/IMG-1384.jpg" alt="" loading="lazy" />
+    </div>
+    <div class="slide" style="z-index:1">
+      <img src="https://i.postimg.cc/MGsMV3GQ/IMG-1401.png" alt="" loading="lazy" />
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const stage = document.querySelector('.stage');
+    const slides = Array.from(stage.querySelectorAll('.slide'));
+    const images = slides.map(s => s.querySelector('img'));
+
+    let particles = [];
+    let stageW = 0, stageH = 0;
+    let startTime = 0;
+    let burstActiveUntil = 0;
+
+    function rand(min, max){
+      return Math.random() * (max - min) + min;
+    }
+
+    // Create a random set of final positions (n points) spread across the stage
+    function generateFinals(W, H, w, h){
+      const n = slides.length;
+      const cols = Math.ceil(Math.sqrt(n));
+      const rows = Math.ceil(n / cols);
+      const cellW = W / cols;
+      const cellH = H / rows;
+      let pts = [];
+      for (let r = 0; r < rows; r++){
+        for (let c = 0; c < cols; c++){
+          if (pts.length >= n) break;
+          let x = (c + 0.5) * cellW;
+          let y = (r + 0.5) * cellH;
+          x += rand(-cellW * 0.25, cellW * 0.25);
+          y += rand(-cellH * 0.25, cellH * 0.25);
+          x = Math.max(0, Math.min(W - w, x - w * 0.5));
+          y = Math.max(0, Math.min(H - h, y - h * 0.5));
+          pts.push({ x, y });
+        }
+      }
+      for (let i = pts.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [pts[i], pts[j]] = [pts[j], pts[i]];
+      }
+      return pts;
+    }
+
+    function init(){
+      stageW = stage.clientWidth;
+      stageH = stage.clientHeight;
+
+      const w = slides[0].clientWidth;
+      const h = slides[0].clientHeight;
+
+      const finals = generateFinals(stageW, stageH, w, h);
+
+      particles = slides.map((el, idx) => {
+        const wEl = el.clientWidth;
+        const hEl = el.clientHeight;
+        const cx = stageW / 2 - wEl / 2;
+        const cy = stageH / 2 - hEl / 2;
+        return {
+          el,
+          w: wEl,
+          h: hEl,
+          x: cx + rand(-60, 60),
+          y: cy + rand(-60, 60),
+          vx: rand(-15, 15),
+          vy: rand(-15, 15),
+          finalX: finals[idx].x,
+          finalY: finals[idx].y,
+          settled: false
+        };
+      });
+
+      // initial render positions
+      particles.forEach(p => {
+        p.el.style.left = p.x + 'px';
+        p.el.style.top  = p.y + 'px';
+      });
+
+      startTime = performance.now();
+      burstActiveUntil = 0;
+      requestAnimationFrame(loop);
+    }
+
+    function onPointerDown(e){
+      const px = e.clientX;
+      const py = e.clientY;
+      const now = performance.now();
+      burstActiveUntil = now + 1800; // 1.8s burst
+
+      // Force each particle to fly away from the tap point
+      slides.forEach((el, idx) => {
+        const p = particles[idx];
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = cx - px;
+        const dy = cy - py;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const speed = rand(14, 28);
+        p.vx = nx * speed;
+        p.vy = ny * speed;
+      });
+    }
+
+    function loop(now){
+      const t = now - startTime;
+      const phase = t < 2200; // initial chaotic ~2.2s
+
+      const isBurst = now < burstActiveUntil;
+
+      for (let i = 0; i < particles.length; i++){
+        const p = particles[i];
+        if (!p) continue;
+
+        if (phase || isBurst){
+          // chaotic drift or burst
+          p.x += p.vx;
+          p.y += p.vy;
+
+          // walls
+          if (p.x < 0){ p.x = 0; p.vx = -p.vx * 0.92; }
+          const maxX = stageW - p.w;
+          if (p.x > maxX){ p.x = maxX; p.vx = -p.vx * 0.92; }
+
+          if (p.y < 0){ p.y = 0; p.vy = -p.vy * 0.92; }
+          const maxY = stageH - p.h;
+          if (p.y > maxY){ p.y = maxY; p.vy = -p.vy * 0.92; }
+
+          p.vx *= 0.995;
+          p.vy *= 0.995;
+        } else {
+          // settle toward final positions
+          const dx = p.finalX - p.x;
+          const dy = p.finalY - p.y;
+          p.vx += dx * 0.07;
+          p.vy += dy * 0.07;
+          p.vx *= 0.92;
+          p.vy *= 0.92;
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (Math.hypot(dx, dy) < 0.8 && Math.hypot(p.vx, p.vy) < 0.8){
+            p.x = p.finalX;
+            p.y = p.finalY;
+            p.vx = 0;
+            p.vy = 0;
+            p.settled = true;
+          }
+        }
+
+        p.el.style.left = p.x + 'px';
+        p.el.style.top  = p.y + 'px';
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('pointerdown', onPointerDown);
+
+    // Handle resize: restart with new layout
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        init();
+      }, 200);
+    });
+
+    // Load handling: start after all images are loaded
+    const loaded = images.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => img.addEventListener('load', resolve, { once: true }));
+    });
+    Promise.all(loaded).then(() => init());
+
+  })();
+  </script>
+</body>
+</html>
